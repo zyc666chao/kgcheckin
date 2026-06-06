@@ -11,6 +11,11 @@ const ACCOUNTS_PATH = path.join(__dirname, "accounts.json");
 
 async function login() {
   const APPEND_USER = process.env.APPEND_USER || "否";
+  const CODE = process.env.CODE || "";
+
+  if (!CODE) {
+    throw new Error("未配置 CODE（验证码），请在 Secrets 中设置 CODE=验证码1,验证码2");
+  }
 
   if (!fs.existsSync(ACCOUNTS_PATH)) {
     throw new Error("accounts.json 不存在！");
@@ -20,6 +25,8 @@ async function login() {
     throw new Error("accounts.json 中没有账号！");
   }
 
+  const codes = CODE.split(",");
+
   // 读取已有的 userinfo
   let userinfo = [];
   if (fs.existsSync(USERINFO_PATH)) {
@@ -27,20 +34,27 @@ async function login() {
     userinfo = JSON.parse(raw);
   }
 
-  // 启动服务（自动设置 platform=lite）
+  // 启动服务（lite 模式）
   const api = startService();
   await delay(2000);
 
   try {
     for (let i = 0; i < accounts.length; i++) {
-      const { username, password } = accounts[i];
+      const { username: phone } = accounts[i];
+      const code = codes[i] || codes[codes.length - 1];
 
-      printYellow(`\n🔐 正在登录第 ${i + 1}/${accounts.length} 个账号: ${maskIdentifier(username)}`);
+      if (!code || code.trim() === "") {
+        printRed(`第 ${i + 1} 个账号 ${maskIdentifier(phone)} 缺少验证码，跳过`);
+        continue;
+      }
 
-      const result = await fetch("http://127.0.0.1:3000/login/pwd/lite", {
+      printYellow(`\n🔐 正在登录第 ${i + 1}/${accounts.length} 个账号: ${maskIdentifier(phone)}`);
+      printYellow(`验证码: ${code}`);
+
+      const result = await fetch("http://127.0.0.1:3000/login/cellphone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ mobile: phone, code, platform: "lite" }),
       }).then((r) => r.json());
 
       if (result?.status === 1) {
@@ -72,9 +86,12 @@ async function login() {
           printGreen(`已添加账号: ${maskIdentifier(userid)}`);
         }
       } else {
-        printRed(`账号 ${maskIdentifier(username)} 登录失败：`);
+        printRed(`账号 ${maskIdentifier(phone)} 登录失败：`);
         console.dir(summarizeResponse(result), { depth: null });
       }
+
+      // 避免请求过快
+      await delay(1500);
     }
 
     if (userinfo.length) {

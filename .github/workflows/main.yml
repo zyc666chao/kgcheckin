@@ -1,33 +1,33 @@
 name: main
 on:
   workflow_dispatch:
-  # push:
   schedule:
     - cron: '10 17 * * *'
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - name: 检出仓库
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: 创建node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: ./api/package-lock.json
-      - name: 🔧 检查GitHub CLI
+
+      - name: 配置 git
         run: |
-          if ! command -v gh >/dev/null 2>&1; then
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh -y
-          fi
-          gh --version
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Cache node_modules in api directory
         id: cache-npm
         uses: actions/cache@v5
@@ -36,12 +36,26 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('./api/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
+
       - name: 安装依赖
         run: npm run install
         if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+
       - name: 签到
         run: npm run main
         env:
-          USERINFO: ${{ secrets.USERINFO }}
-          PAT: ${{ secrets.PAT }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          PHONE: ${{ secrets.PHONE }}
+          CODE: ${{ secrets.CODE }}
+
+      - name: 提交 userinfo.json（如有更新）
+        run: |
+          if [[ -n "$(git status --porcelain userinfo.json)" ]]; then
+            git add userinfo.json
+            git commit -m "chore: 自动更新 userinfo.json (token 刷新)"
+            git push
+            echo "✅ userinfo.json 已更新并推送"
+          else
+            echo "ℹ️ userinfo.json 无变化，无需提交"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,7 +5,7 @@
     "main": "node main.js",
     "install": "cd api && npm ci",
     "apiService": "cd api && npm run start",
-    "passwordLogin": "node passwordLogin.js"
+    "passwordLogin": "node passwordLogin.js",
     "qrcodeLogin": "node qrcodeLogin.js"
   }
 }

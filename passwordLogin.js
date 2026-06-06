@@ -7,22 +7,19 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const USERINFO_PATH = path.join(__dirname, "userinfo.json");
+const ACCOUNTS_PATH = path.join(__dirname, "accounts.json");
 
 async function login() {
-  const rawUsername = process.env.USERNAME;
-  const rawPassword = process.env.PASSWORD;
   const APPEND_USER = process.env.APPEND_USER || "否";
 
-  if (!rawUsername || !rawPassword) {
-    throw new Error("未配置 USERNAME 或 PASSWORD");
+  // 从 accounts.json 读取账号密码
+  if (!fs.existsSync(ACCOUNTS_PATH)) {
+    throw new Error("未找到 accounts.json，请先创建并填入账号密码");
   }
+  const accounts = JSON.parse(fs.readFileSync(ACCOUNTS_PATH, "utf8"));
 
-  // 逗号分隔多账户：USERNAME="user1,user2"  PASSWORD="pass1,pass2"
-  const usernames = rawUsername.split(",").map((s) => s.trim()).filter(Boolean);
-  const passwords = rawPassword.split(",").map((s) => s.trim()).filter(Boolean);
-
-  if (usernames.length !== passwords.length) {
-    throw new Error("USERNAME 和 PASSWORD 数量不一致！");
+  if (!accounts.length) {
+    throw new Error("accounts.json 为空");
   }
 
   // 读取已有的 userinfo
@@ -37,11 +34,10 @@ async function login() {
   await delay(2000);
 
   try {
-    for (let i = 0; i < usernames.length; i++) {
-      const username = usernames[i];
-      const password = passwords[i];
+    for (let i = 0; i < accounts.length; i++) {
+      const { username, password } = accounts[i];
 
-      printYellow(`\n📱 正在登录第 ${i + 1}/${usernames.length} 个账号: ${maskIdentifier(username)}`);
+      printYellow(`\n📱 正在登录第 ${i + 1}/${accounts.length} 个账号: ${maskIdentifier(username)}`);
 
       // 账号密码登录请求
       const result = await fetch("http://127.0.0.1:3000/login", {

@@ -12,14 +12,12 @@ const ACCOUNTS_PATH = path.join(__dirname, "accounts.json");
 async function login() {
   const APPEND_USER = process.env.APPEND_USER || "否";
 
-  // 从 accounts.json 读取账号密码
   if (!fs.existsSync(ACCOUNTS_PATH)) {
-    throw new Error("未找到 accounts.json，请先创建并填入账号密码");
+    throw new Error("accounts.json 不存在！");
   }
   const accounts = JSON.parse(fs.readFileSync(ACCOUNTS_PATH, "utf8"));
-
-  if (!accounts.length) {
-    throw new Error("accounts.json 为空");
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    throw new Error("accounts.json 中没有账号！");
   }
 
   // 读取已有的 userinfo
@@ -29,7 +27,7 @@ async function login() {
     userinfo = JSON.parse(raw);
   }
 
-  // 启动服务
+  // 启动服务（自动设置 platform=lite）
   const api = startService();
   await delay(2000);
 
@@ -37,10 +35,9 @@ async function login() {
     for (let i = 0; i < accounts.length; i++) {
       const { username, password } = accounts[i];
 
-      printYellow(`\n📱 正在登录第 ${i + 1}/${accounts.length} 个账号: ${maskIdentifier(username)}`);
+      printYellow(`\n🔐 正在登录第 ${i + 1}/${accounts.length} 个账号: ${maskIdentifier(username)}`);
 
-      // 账号密码登录请求
-      const result = await fetch("http://127.0.0.1:3000/login", {
+      const result = await fetch("http://127.0.0.1:3000/login/pwd/lite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -49,11 +46,12 @@ async function login() {
       if (result?.status === 1) {
         printGreen("登录成功！");
 
-        const userid = result.data?.userid || result.data?.user?.id;
+        const userid = result.data?.userid;
         const token = result.data?.token;
 
         if (!userid || !token) {
           printRed("登录响应缺少 userid 或 token");
+          console.dir(summarizeResponse(result), { depth: null });
           continue;
         }
 

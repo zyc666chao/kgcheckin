@@ -6,6 +6,8 @@
     "install": "cd api && npm ci",
     "apiService": "cd api && npm run start",
     "passwordLogin": "node passwordLogin.js",
-    "qrcodeLogin": "node qrcodeLogin.js"
+    "qrcodeLogin": "node qrcodeLogin.js",
+    "sent": "node sent.js",
+    "phoneLogin": "node phoneLogin.js"
   }
 }

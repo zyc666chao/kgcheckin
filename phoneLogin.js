@@ -48,9 +48,16 @@ async function login() {
         }
       }
       if (!userAlreadyExist) {
+        const _userid = result.data.user?.id || result.data.userid || result.data.user_id || result.data.uid;
+        const _token = result.data.token || result.data.vip_token;
+        if (!_userid || !_token) {
+          printRed("登录响应字段异常，无法提取 userid/token");
+          console.dir(summarizeResponse(result), { depth: null });
+          throw new Error("登录响应字段异常");
+        }
         userinfo.push({
-          userid: result.data.user.id,
-          token: result.data.token,
+          userid: _userid,
+          token: _token,
         });
       }
       if (userinfo.length) {
